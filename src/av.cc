@@ -1,4 +1,5 @@
 #include "./av.hh"
+#include "./error.hh"
 
 extern "C" {
 #	include <libavutil/opt.h>
@@ -8,7 +9,10 @@ extern "C" {
 #	include <libavcodec/mediacodec.h>
 }
 
+#include <cassert>
 #include <algorithm>
+
+const ddb::av::av_category ddb::av::av_category::inst;
 
 std::vector<ddb::av::codec_info> ddb::av::get_codecs() {
 	std::vector<codec_info> result;
@@ -57,18 +61,19 @@ int ddb::av::stream::read_packet(void *thisptr, unsigned char *buf, int size) {
 ddb::av::stream::stream()
 : avctx(nullptr)
 , detected(false)
+, stream_id(-1)
 {}
 
-bool ddb::av::stream::init() {
+void ddb::av::stream::init(std::error_code &err) {
 	if (!avctx) {
 		avctx = avformat_alloc_context();
-		if (avctx == nullptr) return false;
+		if (avctx == nullptr) return err.assign(ddb::ERR_NO_MEM, ddb::ddb_category::inst);
 		avctx->pb = nullptr;
 	}
 
 	if (avctx->pb == nullptr) {
 		unsigned char *buf = (unsigned char *)av_malloc(buffer_size);
-		if (buf == nullptr) return false;
+		if (buf == nullptr) return err.assign(ddb::ERR_NO_MEM, ddb::ddb_category::inst);
 
 		avctx->pb = avio_alloc_context(
 			buf, buffer_size,
@@ -79,17 +84,35 @@ bool ddb::av::stream::init() {
 			&seek_packet
 		);
 
-		if (avctx->pb == nullptr) return false;
+		if (avctx->pb == nullptr) return err.assign(ddb::ERR_NO_MEM, ddb::ddb_category::inst);
 
-		if (avformat_open_input(&avctx, nullptr, nullptr, nullptr) < 0) {
-			return false;
+		int r = avformat_open_input(&avctx, nullptr, nullptr, nullptr);
+		if (r < 0) {
+			return err.assign(r, ddb::av::av_category::inst);
 		}
 	}
 
-	if (detected) return true;
+	if (detected) return;
 
-	detected = avformat_find_stream_info(avctx, nullptr) >= 0;
-	return detected;
+	int r = avformat_find_stream_info(avctx, nullptr);
+	detected = r >= 0;
+
+	if (r < 0) err.assign(r, ddb::av::av_category::inst);
+
+	if (detected) {
+		stream_id = -1;
+		for (unsigned int i = 0; i < avctx->nb_streams; i++) {
+			if (avctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+				stream_id = (int) i;
+				break;
+			}
+		}
+
+		if (stream_id == -1) {
+			err.assign(ddb::ERR_NO_VIDEO, ddb::ddb_category::inst);
+			return;
+		}
+	}
 }
 
 ddb::av::stream::~stream() {
@@ -119,4 +142,36 @@ void ddb::av::init() {
 #if (LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58, 10, 100))
 	avcodec_register_all();
 #endif
+}
+
+const char * ddb::av::av_category::name() const noexcept {
+	return "libav";
+}
+
+std::string ddb::av::av_category::message(int condition) const {
+	std::string res;
+	res.resize(AV_ERROR_MAX_STRING_SIZE);
+	if (av_strerror(condition, res.data(), AV_ERROR_MAX_STRING_SIZE) < 0) {
+		res = "<unknown av error>";
+	} else {
+		res.shrink_to_fit();
+	}
+	return res;
+}
+
+std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
+	assert(stream_id >= 0);
+	assert((unsigned)stream_id < avctx->nb_streams);
+
+	std::vector<frame> result;
+
+	if (!initialized()) {
+		err.assign(ddb::ERR_NOT_INITIALIZED, ddb::ddb_category::inst);
+		return result;
+	}
+
+	AVPacket packet;
+	av_init_packet(&packet);
+
+	return result;
 }

@@ -3,6 +3,7 @@ cmake_minimum_required (VERSION 3.2)
 
 add_library (ddb STATIC
 	src/av.cc
+	src/error.cc
 )
 
 target_link_libraries (ddb PUBLIC

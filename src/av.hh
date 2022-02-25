@@ -9,6 +9,7 @@
 #include <array>
 #include <string>
 #include <set>
+#include <system_error>
 #include <utility>
 #include <vector>
 #include <memory>
@@ -17,8 +18,20 @@ struct AVFormatContext;
 
 namespace ddb::av {
 
-template <unsigned int size = 256>
-using frame = std::array<unsigned char, size * size>;
+class av_category : public std::error_category {
+	constexpr av_category() : std::error_category{} {}
+public:
+	virtual const char* name() const noexcept override;
+	virtual std::string message(int condition) const override;
+
+	static const av_category inst;
+};
+
+struct frame {
+	std::vector<unsigned char> pixels;
+public:
+	frame(std::size_t size);
+};
 
 struct codec_info {
 	codec_info() = default;
@@ -44,6 +57,7 @@ public:
 private:
 	AVFormatContext *avctx;
 	bool detected;
+	int stream_id;
 
 	static int read_packet(void *, unsigned char *, int);
 	static long seek_packet(void *, std::int64_t, int);
@@ -56,8 +70,10 @@ protected:
 public:
 	virtual ~stream();
 
-	bool init();
+	void init(std::error_code &);
 	bool initialized() const noexcept;
+
+	std::vector<frame> decode(std::error_code &);
 };
 
 std::vector<codec_info> get_codecs();

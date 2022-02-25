@@ -80,10 +80,21 @@ int main(int argc, char *argv[]) {
 	}
 
 	file_stream stream{ argv[1] };
-	if (!stream.init()) {
-		std::cerr << "error: failed to initialize or detect file\n";
+
+	std::error_code err;
+	stream.init(err);
+	if (err) {
+		std::cerr << "error: failed to initialize or detect file: " << err << "\n";
 		return 2;
 	}
+
+	std::vector<ddb::av::frame> frames = stream.decode(err);
+	if (err) {
+		std::cerr << "failed to decode: " << err << "\n";
+		return 1;
+	}
+
+	std::cerr << "# frames: " << frames.size() << "\n";
 
 	return 0;
 }
