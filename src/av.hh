@@ -29,7 +29,7 @@ public:
 
 struct frame {
 	static constexpr int frame_size = 64;
-	std::array<unsigned char, frame_size * frame_size> pixels;
+	std::array<unsigned char, frame_size * frame_size * 3> pixels;
 	frame(const unsigned char *begin, const unsigned char *end);
 };
 

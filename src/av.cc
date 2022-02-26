@@ -220,7 +220,7 @@ std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
 				if (r >= 0) {
 					frames.emplace_back(
 						dst_buffer,
-						dst_buffer + (frame::frame_size * frame::frame_size)
+						dst_buffer + (frame::frame_size * frame::frame_size * 3)
 					);
 				}
 			}
@@ -267,13 +267,13 @@ std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
 		return {};
 	}
 
-	int num_bytes = avpicture_get_size(AV_PIX_FMT_GRAY8, frame::frame_size, frame::frame_size);
-	assert(num_bytes == (frame::frame_size * frame::frame_size));
+	int num_bytes = avpicture_get_size(AV_PIX_FMT_RGB24, frame::frame_size, frame::frame_size);
+	assert(num_bytes == (frame::frame_size * frame::frame_size * 3));
 	session.dst_buffer = (uint8_t *)av_malloc(num_bytes * sizeof(uint8_t));
 	avpicture_fill(
 		(AVPicture *)session.dst_frame,
 		session.dst_buffer,
-		AV_PIX_FMT_GRAY8,
+		AV_PIX_FMT_RGB24,
 		frame::frame_size,
 		frame::frame_size
 	);
@@ -290,7 +290,7 @@ std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
 		session.codec->pix_fmt,
 		frame::frame_size,
 		frame::frame_size,
-		AV_PIX_FMT_GRAY8,
+		AV_PIX_FMT_RGB24,
 		0,
 		nullptr,
 		nullptr,

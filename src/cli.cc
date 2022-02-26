@@ -1,4 +1,5 @@
 #include "./av.hh"
+#include "./phash.hh"
 
 #include <fstream>
 #include <iostream>
@@ -112,15 +113,36 @@ int main(int argc, char *argv[]) {
 
 	// dump ANSI
 	for (const auto &frame : frames) {
-		unsigned count = 0;
-		for (const auto pixel : frame.pixels) {
-			if ((count++ % ddb::av::frame::frame_size) == 0) {
-				std::cout << "\x1b[0m\n";
+		for (std::size_t y = 0; y < ddb::av::frame::frame_size; y++) {
+			for (std::size_t x = 0; x < ddb::av::frame::frame_size; x++) {
+				const unsigned char *pixel = &frame.pixels[(y * ddb::av::frame::frame_size + x) *3];
+				std::cout
+					<< "\x1b[48;2;"
+					<< (int)pixel[0] << ";"
+					<< (int)pixel[1] << ";"
+					<< (int)pixel[2] << "m ";
 			}
-
-			std::cout << "\x1b[48;2;" << (int)pixel << ";" << (int)pixel << ";" << (int)pixel << "m ";
+			std::cout << "\x1b[m\n";
 		}
-		std::cout << "\n";
+		std::cout << "\x1b[m\n";
+
+		ddb::phash::hash_result<ddb::av::frame::frame_size> result;
+		ddb::phash::digest(frame.pixels, result);
+
+		static const auto dump_result = [](const char *name, const decltype(result.red) &result) {
+			std::cerr << name << ":\n";
+			for (const auto &val : result) {
+				std::cerr << "\t" << val << "\n";
+			}
+		};
+
+		dump_result("red", result.red);
+		dump_result("green", result.green);
+		dump_result("blue", result.blue);
+		dump_result("luminance", result.luminance);
+		dump_result("grayscale", result.grayscale);
+		dump_result("combined1", result.combined1);
+		dump_result("combined2", result.combined2);
 	}
 
 	return 0;
