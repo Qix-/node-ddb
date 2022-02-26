@@ -1,5 +1,4 @@
 #include "./av.hh"
-#include "./phash.hh"
 
 #include <fstream>
 #include <iostream>
@@ -125,24 +124,6 @@ int main(int argc, char *argv[]) {
 			std::cout << "\x1b[m\n";
 		}
 		std::cout << "\x1b[m\n";
-
-		ddb::phash::hash_result<ddb::av::frame::frame_size> result;
-		ddb::phash::digest(frame.pixels, result);
-
-		static const auto dump_result = [](const char *name, const decltype(result.red) &result) {
-			std::cerr << name << ":\n";
-			for (const auto &val : result) {
-				std::cerr << "\t" << val << "\n";
-			}
-		};
-
-		dump_result("red", result.red);
-		dump_result("green", result.green);
-		dump_result("blue", result.blue);
-		dump_result("luminance", result.luminance);
-		dump_result("grayscale", result.grayscale);
-		dump_result("combined1", result.combined1);
-		dump_result("combined2", result.combined2);
 	}
 
 	return 0;
