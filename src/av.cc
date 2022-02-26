@@ -175,3 +175,10 @@ std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
 
 	return result;
 }
+
+void ddb::av::stream::dump(std::error_code &err) const {
+	if (!initialized()) {
+		return err.assign(ddb::ERR_NOT_INITIALIZED, ddb::ddb_category::inst);
+	}
+	av_dump_format(avctx, stream_id, "<input>", 0);
+}

@@ -84,13 +84,22 @@ int main(int argc, char *argv[]) {
 	std::error_code err;
 	stream.init(err);
 	if (err) {
-		std::cerr << "error: failed to initialize or detect file: " << err << "\n";
+		std::cerr << "error: failed to initialize or detect file: "
+			<< err << ": " << err.message() << "\n";
 		return 2;
+	}
+
+	stream.dump(err);
+	if (err) {
+		std::cerr << "failed to dump format info: "
+			<< err << ": " << err.message() << "\n";
+		return 1;
 	}
 
 	std::vector<ddb::av::frame> frames = stream.decode(err);
 	if (err) {
-		std::cerr << "failed to decode: " << err << "\n";
+		std::cerr << "failed to decode: "
+			<< err << ": " << err.message() << "\n";
 		return 1;
 	}
 

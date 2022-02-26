@@ -73,6 +73,8 @@ public:
 	void init(std::error_code &);
 	bool initialized() const noexcept;
 
+	void dump(std::error_code &) const;
+
 	std::vector<frame> decode(std::error_code &);
 };
 
