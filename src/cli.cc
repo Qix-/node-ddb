@@ -105,5 +105,23 @@ int main(int argc, char *argv[]) {
 
 	std::cerr << "# frames: " << frames.size() << "\n";
 
+	if (frames.size() == 0) {
+		std::cerr << "error: no frames\n";
+		return 1;
+	}
+
+	// dump ANSI
+	for (const auto &frame : frames) {
+		unsigned count = 0;
+		for (const auto pixel : frame.pixels) {
+			if ((count++ % ddb::av::frame::frame_size) == 0) {
+				std::cout << "\x1b[0m\n";
+			}
+
+			std::cout << "\x1b[48;2;" << (int)pixel << ";" << (int)pixel << ";" << (int)pixel << "m ";
+		}
+		std::cout << "\n";
+	}
+
 	return 0;
 }

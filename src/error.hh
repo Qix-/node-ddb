@@ -10,7 +10,9 @@ enum error_code {
 	ERR_OK = 0,
 	ERR_NO_MEM,
 	ERR_NOT_INITIALIZED,
-	ERR_NO_VIDEO
+	ERR_NO_VIDEO,
+	ERR_UNKNOWN_DECODER,
+	ERR_INVALID_SWS
 };
 
 class ddb_category : public std::error_category {

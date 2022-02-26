@@ -1,5 +1,6 @@
 #include "./av.hh"
 #include "./error.hh"
+#include "./util.hh"
 
 extern "C" {
 #	include <libavutil/opt.h>
@@ -7,9 +8,12 @@ extern "C" {
 #	include <libavcodec/avcodec.h>
 #	include <libavformat/avformat.h>
 #	include <libavcodec/mediacodec.h>
+#	include <libavutil/imgutils.h>
+#	include <libswscale/swscale.h>
 }
 
 #include <cassert>
+#include <cstdint>
 #include <algorithm>
 
 const ddb::av::av_category ddb::av::av_category::inst;
@@ -126,6 +130,7 @@ ddb::av::stream::~stream() {
 			avio_context_free(&avctx->pb);
 		}
 
+		avformat_close_input(&avctx);
 		avformat_free_context(avctx);
 		avctx = nullptr;
 	}
@@ -133,6 +138,10 @@ ddb::av::stream::~stream() {
 
 bool ddb::av::stream::initialized() const noexcept {
 	return detected && avctx && avctx->pb && avctx->pb->buffer;
+}
+
+ddb::av::frame::frame(const unsigned char *begin, const unsigned char *end) {
+	std::copy(begin, end, pixels.begin());
 }
 
 void ddb::av::init() {
@@ -163,17 +172,157 @@ std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
 	assert(stream_id >= 0);
 	assert((unsigned)stream_id < avctx->nb_streams);
 
-	std::vector<frame> result;
-
 	if (!initialized()) {
 		err.assign(ddb::ERR_NOT_INITIALIZED, ddb::ddb_category::inst);
-		return result;
+		return {};
 	}
 
-	AVPacket packet;
-	av_init_packet(&packet);
+	struct decoder_session {
+		std::vector<frame> frames;
+		AVStream *stream = nullptr;
+		AVCodec *decoder = nullptr;
+		AVCodecContext *codec = nullptr;
+		AVFrame *frame = nullptr;
+		AVFrame *dst_frame = nullptr;
+		AVPacket *packet = nullptr;
+		SwsContext *sws = nullptr;
+		uint8_t *dst_buffer = nullptr;
 
-	return result;
+		~decoder_session() {
+			if (codec) avcodec_free_context(&codec);
+			if (frame) av_frame_free(&frame);
+			if (dst_frame) av_frame_free(&dst_frame);
+			if (packet) av_packet_free(&packet);
+			if (sws) sws_freeContext(sws);
+			if (dst_buffer) av_free(dst_buffer);
+		}
+
+		int decode_packet(AVPacket *packet) {
+			int r = avcodec_send_packet(codec, packet);
+			if (r < 0) return r;
+
+			while (r >= 0) {
+				r = avcodec_receive_frame(codec, frame);
+				if (r == AVERROR_EOF || r == AVERROR(EAGAIN)) return 0;
+
+				r = sws_scale(
+					sws,
+					frame->data,
+					frame->linesize,
+					0,
+					frame->height,
+					dst_frame->data,
+					dst_frame->linesize
+				);
+
+				av_frame_unref(frame);
+
+				if (r >= 0) {
+					frames.emplace_back(
+						dst_buffer,
+						dst_buffer + (frame::frame_size * frame::frame_size)
+					);
+				}
+			}
+
+			return r;
+		}
+	} session;
+
+	session.stream = avctx->streams[stream_id];
+
+	session.decoder = avcodec_find_decoder(session.stream->codecpar->codec_id);
+	if (session.decoder == nullptr) {
+		err.assign(ddb::ERR_UNKNOWN_DECODER, ddb_category::inst);
+		return {};
+	}
+
+	session.codec = avcodec_alloc_context3(session.decoder);
+	if (session.codec == nullptr) {
+		err.assign(ddb::ERR_NO_MEM, ddb_category::inst);
+		return {};
+	}
+
+	int r = avcodec_parameters_to_context(session.codec, session.stream->codecpar);
+	if (r < 0) {
+		err.assign(r, av::av_category::inst);
+		return {};
+	}
+
+	r = avcodec_open2(session.codec, session.decoder, NULL);
+	if (r < 0) {
+		err.assign(r, av::av_category::inst);
+		return {};
+	}
+
+	session.frame = av_frame_alloc();
+	if (!session.frame) {
+		err.assign(ddb::ERR_NO_MEM, ddb_category::inst);
+		return {};
+	}
+
+	session.dst_frame = av_frame_alloc();
+	if (!session.dst_frame) {
+		err.assign(ddb::ERR_NO_MEM, ddb_category::inst);
+		return {};
+	}
+
+	int num_bytes = avpicture_get_size(AV_PIX_FMT_GRAY8, frame::frame_size, frame::frame_size);
+	assert(num_bytes == (frame::frame_size * frame::frame_size));
+	session.dst_buffer = (uint8_t *)av_malloc(num_bytes * sizeof(uint8_t));
+	avpicture_fill(
+		(AVPicture *)session.dst_frame,
+		session.dst_buffer,
+		AV_PIX_FMT_GRAY8,
+		frame::frame_size,
+		frame::frame_size
+	);
+
+	session.packet = av_packet_alloc();
+	if (!session.packet) {
+		err.assign(ddb::ERR_NO_MEM, ddb_category::inst);
+		return {};
+	}
+
+	session.sws = sws_getContext(
+		session.codec->width,
+		session.codec->height,
+		session.codec->pix_fmt,
+		frame::frame_size,
+		frame::frame_size,
+		AV_PIX_FMT_GRAY8,
+		0,
+		nullptr,
+		nullptr,
+		nullptr
+	);
+
+	if (session.sws == nullptr) {
+		err.assign(ddb::ERR_INVALID_SWS, ddb_category::inst);
+		return {};
+	}
+
+	// Decode
+	while ((r = av_read_frame(avctx, session.packet)) >= 0) {
+		if (session.packet->stream_index == stream_id)
+			r = session.decode_packet(session.packet);
+		av_packet_unref(session.packet);
+		if (r < 0) break;
+	}
+
+	if (r != AVERROR_EOF) {
+		err.assign(r, av::av_category::inst);
+		return {};
+	}
+
+	// flush decoders
+	r = session.decode_packet(nullptr);
+	if (r < 0) {
+		err.assign(r, av::av_category::inst);
+		return {};
+	}
+
+	return session.frames;
 }
 
 void ddb::av::stream::dump(std::error_code &err) const {

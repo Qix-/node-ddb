@@ -28,9 +28,9 @@ public:
 };
 
 struct frame {
-	std::vector<unsigned char> pixels;
-public:
-	frame(std::size_t size);
+	static constexpr int frame_size = 64;
+	std::array<unsigned char, frame_size * frame_size> pixels;
+	frame(const unsigned char *begin, const unsigned char *end);
 };
 
 struct codec_info {
