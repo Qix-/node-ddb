@@ -1,0 +1,19 @@
+{
+  "name": "@qix/ddb",
+  "version": "0.1.0",
+  "description": "Video/image media extraction to fixed sized frames",
+  "license": "GPL3",
+  "author": "Josh Junon (https://github.com/qix-)",
+  "type": "module",
+  "main": "./index.mjs",
+  "scripts": {
+    "prepublishOnly": "npm rebuild"
+  },
+  "files": [
+    "README.md",
+    "index.mjs",
+    "stub.cjs",
+    "binding.gyp",
+    "src"
+  ]
+}

@@ -54,6 +54,7 @@ public:
 		RELATIVE = SEEK_CUR,
 		END = SEEK_END
 	};
+
 private:
 	AVFormatContext *avctx;
 	bool detected;

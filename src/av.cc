@@ -182,7 +182,7 @@ std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
 		AVStream *stream = nullptr;
 		AVCodec *decoder = nullptr;
 		AVCodecContext *codec = nullptr;
-		AVFrame *frame = nullptr;
+		AVFrame *src_frame = nullptr;
 		AVFrame *dst_frame = nullptr;
 		AVPacket *packet = nullptr;
 		SwsContext *sws = nullptr;
@@ -190,7 +190,7 @@ std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
 
 		~decoder_session() {
 			if (codec) avcodec_free_context(&codec);
-			if (frame) av_frame_free(&frame);
+			if (src_frame) av_frame_free(&src_frame);
 			if (dst_frame) av_frame_free(&dst_frame);
 			if (packet) av_packet_free(&packet);
 			if (sws) sws_freeContext(sws);
@@ -202,20 +202,20 @@ std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
 			if (r < 0) return r;
 
 			while (r >= 0) {
-				r = avcodec_receive_frame(codec, frame);
+				r = avcodec_receive_frame(codec, src_frame);
 				if (r == AVERROR_EOF || r == AVERROR(EAGAIN)) return 0;
 
 				r = sws_scale(
 					sws,
-					frame->data,
-					frame->linesize,
+					src_frame->data,
+					src_frame->linesize,
 					0,
-					frame->height,
+					src_frame->height,
 					dst_frame->data,
 					dst_frame->linesize
 				);
 
-				av_frame_unref(frame);
+				av_frame_unref(src_frame);
 
 				if (r >= 0) {
 					frames.emplace_back(
@@ -255,8 +255,8 @@ std::vector<ddb::av::frame> ddb::av::stream::decode(std::error_code &err) {
 		return {};
 	}
 
-	session.frame = av_frame_alloc();
-	if (!session.frame) {
+	session.src_frame = av_frame_alloc();
+	if (!session.src_frame) {
 		err.assign(ddb::ERR_NO_MEM, ddb_category::inst);
 		return {};
 	}

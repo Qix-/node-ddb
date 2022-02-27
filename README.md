@@ -15,8 +15,8 @@ looking for.**
 ## **WARNING!**
 
 Absolute **under no circumstances** should you save the `Buffer` reference
-passed to the `read` callback. Do not store it, read from it, or write to it
-outside of the lifetime of the `read` call!
+passed to the `read` and `frames` callbacks. Do not store it, read from it,
+or write to it outside of the lifetime of the `read` call!
 
 **YOU'VE BEEN WARNED. THIS PACKAGE COMES WITH NO WARRANTY.**
 
