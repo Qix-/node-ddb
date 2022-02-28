@@ -9,12 +9,12 @@ declare function extract(callbacks: {
 	frames: (frames: Buffer[]) => void
 }): void;
 
-declare function extractFrames(buf: Buffer, frames: (frames: Buffer[]) => void): void;
+declare function extractBuffer(buf: Buffer, frames: (frames: Buffer[]) => void): void;
 
 export {
 	BEGINNING,
 	RELATIVE,
 	END,
 	extract,
-	extractFrames
+	extractBuffer
 };
