@@ -1,11 +1,12 @@
 import ddbNative from './stub.cjs';
 
-const {extractFrames, BEGINNING, END, RELATIVE} = ddbNative;
+const {extractFrames, BEGINNING, END, RELATIVE, FRAME_SIZE} = ddbNative;
 
 export {
 	BEGINNING,
 	END,
-	RELATIVE
+	RELATIVE,
+	FRAME_SIZE
 };
 
 export function extract({read, seek, tell, frames}) {

@@ -1,3 +1,4 @@
+declare const FRAME_SIZE: number;
 declare const BEGINNING: number;
 declare const RELATIVE: number;
 declare const END: number;
@@ -12,6 +13,7 @@ declare function extract(callbacks: {
 declare function extractBuffer(buf: Buffer, frames: (frames: Buffer[]) => void): void;
 
 export {
+	FRAME_SIZE,
 	BEGINNING,
 	RELATIVE,
 	END,

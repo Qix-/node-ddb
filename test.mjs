@@ -1,12 +1,14 @@
 import fsp from 'node:fs/promises';
 
-import {extractBuffer} from './index.mjs';
+import {extractBuffer, FRAME_SIZE} from './index.mjs';
 
 if (!process.argv[2]) {
 	throw new Error('missing input');
 }
 
 const buf = await fsp.readFile(process.argv[2]);
+
+console.log({FRAME_SIZE});
 
 extractBuffer(buf, frames => {
 	console.log(frames.length);

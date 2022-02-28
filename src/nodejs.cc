@@ -225,6 +225,10 @@ napi_value init(napi_env env, napi_value exports) {
 	status = napi_create_int32(env, ddb::av::stream::END, &whence_values[2]);
 	if (status != napi_ok) return nullptr;
 
+	napi_value frame_size;
+	status = napi_create_uint32(env, ddb::av::frame::frame_size, &frame_size);
+	if (status != napi_ok) return nullptr;
+
 	status = napi_set_named_property(env, exports, "extractFrames", fn);
 	if (status != napi_ok) return nullptr;
 	status = napi_set_named_property(env, exports, "BEGINNING", whence_values[0]);
@@ -232,6 +236,8 @@ napi_value init(napi_env env, napi_value exports) {
 	status = napi_set_named_property(env, exports, "RELATIVE", whence_values[1]);
 	if (status != napi_ok) return nullptr;
 	status = napi_set_named_property(env, exports, "END", whence_values[2]);
+	if (status != napi_ok) return nullptr;
+	status = napi_set_named_property(env, exports, "FRAME_SIZE", frame_size);
 	if (status != napi_ok) return nullptr;
 
 	return exports;
