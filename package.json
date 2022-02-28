@@ -6,6 +6,7 @@
   "author": "Josh Junon (https://github.com/qix-)",
   "type": "module",
   "main": "./index.mjs",
+  "types": "index.d.ts",
   "scripts": {
     "prepublishOnly": "npm rebuild"
   },
@@ -14,6 +15,7 @@
     "index.mjs",
     "stub.cjs",
     "binding.gyp",
-    "src"
+    "src",
+    "index.d.ts"
   ]
 }
