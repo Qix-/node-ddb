@@ -13,7 +13,16 @@
         "-lavutil",
         "-lavformat",
         "-lswscale"
-      ]
+      ],
+      "cflags_cc": [
+        "-std=c++17",
+        "-Wno-deprecated-declarations"
+      ],
+      "msvs_settings": {
+        "VCCLCompilerTool": {
+          "AdditionalOptions": [ "-std:c++17" ],
+        }
+      }
     }
   ]
 }
